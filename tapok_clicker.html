@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тапок Кликер — Бесконечный Тапок</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --text: #f0f0f0;
+    --green: #00d26a;
+    --gold: #ffd700;
+    --border: #2a2a4a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 0.5s, color 0.5s;
+  }
+  /* --- Black & White theme --- */
+  body.bw {
+    --bg: #111;
+    --card: #222;
+    --accent: #fff;
+    --accent2: #444;
+    --text: #fff;
+    --green: #ccc;
+    --gold: #fff;
+    --border: #333;
+  }
+  body.bw .tapok { filter: grayscale(100%); }
+  body.bw .skin-preview { filter: grayscale(100%); }
+
+  /* particles */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    font-weight: bold;
+    font-size: 18px;
+    color: var(--accent);
+    animation: floatUp 1s ease-out forwards;
+    z-index: 9999;
+  }
+  @keyframes floatUp {
+    0% { opacity:1; transform: translateY(0) scale(1); }
+    100% { opacity:0; transform: translateY(-80px) scale(1.3); }
+  }
+
+  /* layout */
+  .app { display:flex; flex-direction:column; min-height:100vh; }
+  header {
+    background: var(--card);
+    padding: 10px 20px;
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom: 2px solid var(--border);
+    position:sticky; top:0; z-index:100;
+  }
+  header h1 { font-size:1.3rem; color:var(--accent); }
+  .top-bar { display:flex; gap:10px; align-items:center; }
+  .btn {
+    background: var(--accent2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: 0.2s;
+  }
+  .btn:hover { background: var(--accent); color:#fff; }
+  .btn.active { background: var(--accent); color:#fff; }
+
+  .main { flex:1; display:flex; flex-direction:column; align-items:center; padding:20px; gap:20px; }
+
+  /* stats bar */
+  .stats {
+    display:flex; gap:20px; flex-wrap:wrap; justify-content:center;
+    background: var(--card); padding:12px 24px; border-radius:16px;
+    border:1px solid var(--border);
+  }
+  .stat { text-align:center; }
+  .stat .val { font-size:1.6rem; font-weight:bold; color:var(--gold); }
+  .stat .lbl { font-size:0.75rem; color:#aaa; }
+
+  /* tapok */
+  .tap-zone {
+    position:relative; width:280px; height:280px; display:flex;
+    align-items:center; justify-content:center; margin:10px 0;
+  }
+  .tapok {
+    width:220px; height:220px;
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #c0392b);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 -10px 20px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.05s, filter 0.3s;
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    user-select: none;
+  }
+  .tapok::after {
+    content: "👟"; font-size: 90px;
+  }
+  .tapok:active { transform: scale(0.92); }
+  .tapok.shake { animation: shake 0.3s; }
+  @keyframes shake {
+    0%,100%{transform: rotate(0deg);}
+    25%{transform: rotate(-8deg);}
+    75%{transform: rotate(8deg);}
+  }
+
+  /* tabs */
+  .tabs {
+    display:flex; gap:6px; flex-wrap:wrap; justify-content:center;
+    margin-bottom: 10px;
+  }
+  .tab-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .tab-btn:hover, .tab-btn.active { background: var(--accent); color:#fff; }
+
+  .panel {
+    width:100%; max-width: 900px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    min-height: 300px;
+    display: none;
+  }
+  .panel.active { display: block; }
+
+  /* upgrades */
+  .upgrade-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:12px; }
+  .upgrade {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+    display:flex; flex-direction:column; gap:6px;
+    transition: 0.2s;
+  }
+  .upgrade:hover { border-color: var(--accent); }
+  .upgrade .u-name { font-weight:bold; color:var(--accent); }
+  .upgrade .u-desc { font-size:0.8rem; color:#bbb; }
+  .upgrade .u-lvl { font-size:0.8rem; color:var(--green); }
+  .upgrade .u-cost { font-size:0.9rem; color:var(--gold); }
+  .upgrade button {
+    margin-top:auto; background: var(--accent2); border:none; color:#fff;
+    padding:8px; border-radius:8px; cursor:pointer; font-weight:bold;
+  }
+  .upgrade button:disabled { opacity:0.4; cursor:not-allowed; }
+  .upgrade button:hover:not(:disabled) { background: var(--accent); }
+
+  /* quests */
+  .quest-list { display:flex; flex-direction:column; gap:10px; }
+  .quest {
+    background: var(--bg); border:1px solid var(--border); border-radius:12px;
+    padding:12px 16px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .quest.done { border-color: var(--green); opacity:0.7; }
+  .quest .q-title { font-weight:bold; }
+  .quest .q-reward { color:var(--gold); font-size:0.85rem; }
+  .quest .q-bar-wrap { width:120px; height:8px; background:#333; border-radius:4px; overflow:hidden; }
+  .quest .q-bar { height:100%; background:var(--accent); width:0%; transition:0.3s; }
+
+  /* skins */
+  .skin-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:14px; }
+  .skin-card {
+    background: var(--bg); border:2px solid var(--border); border-radius:14px;
+    padding:12px; text-align:center; cursor:pointer; transition:0.2s;
+  }
+  .skin-card:hover { border-color: var(--accent); }
+  .skin-card.locked { opacity:0.5; }
+  .skin-card.active { border-color: var(--green); box-shadow: 0 0 12px var(--green); }
+  .skin-preview {
+    width:80px; height:80px; margin:0 auto 8px;
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #c0392b);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    display:flex; align-items:center; justify-content:center; font-size:40px;
+  }
+  .skin-name { font-size:0.85rem; font-weight:bold; }
+  .skin-req { font-size:0.7rem; color:#aaa; margin-top:4px; }
+
+  /* achievements */
+  .ach-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap:10px; }
+  .ach {
+    background: var(--bg); border:1px solid var(--border); border-radius:10px;
+    padding:10px; font-size:0.85rem;
+  }
+  .ach.unlocked { border-color: var(--gold); }
+  .ach-title { font-weight:bold; color:var(--accent); }
+  .ach-desc { color:#aaa; font-size:0.75rem; }
+
+  /* story / rules / settings */
+  .text-block { line-height:1.6; color:#ccc; }
+  .text-block h3 { color:var(--accent); margin:16px 0 8px; }
+  .text-block p { margin-bottom:10px; }
+
+  /* settings */
+  .setting-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+  .toggle {
+    width:44px; height:24px; background:#444; border-radius:12px; position:relative; cursor:pointer;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content:""; position:absolute; width:20px; height:20px; background:#fff; border-radius:50%;
+    top:2px; left:2px; transition:0.2s;
+  }
+  .toggle.on::after { left:22px; }
+
+  /* prestige */
+  .prestige-box {
+    text-align:center; padding:20px; background: var(--bg); border-radius:14px; border:1px solid var(--border);
+  }
+  .prestige-box h2 { color:var(--gold); margin-bottom:10px; }
+
+  /* save modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none;
+    align-items:center; justify-content:center; z-index:1000;
+  }
+  .modal-overlay.show { display:flex; }
+  .modal {
+    background: var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:24px; width:90%; max-width:500px;
+  }
+  .modal h2 { margin-bottom:12px; color:var(--accent); }
+  .modal textarea {
+    width:100%; height:120px; background: var(--bg); color:var(--text);
+    border:1px solid var(--border); border-radius:8px; padding:10px; font-family:monospace;
+    resize:none;
+  }
+  .modal-actions { display:flex; gap:10px; margin-top:12px; justify-content:flex-end; }
+
+  /* event banner */
+  .event-banner {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    padding: 8px 16px; border-radius: 10px; text-align:center; font-weight:bold;
+    margin-bottom: 10px; display:none;
+  }
+  .event-banner.show { display:block; }
+
+  /* combo */
+  .combo-display {
+    position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+    font-size: 1.2rem; color: var(--gold); font-weight: bold; opacity: 0; transition: 0.3s;
+  }
+  .combo-display.show { opacity: 1; }
+
+  /* mini-games placeholder style */
+  .mini-btn {
+    background: var(--accent); border:none; color:#fff; padding:10px 20px;
+    border-radius:10px; cursor:pointer; font-weight:bold; margin:5px;
+  }
+
+  footer { text-align:center; padding:10px; font-size:0.75rem; color:#555; }
+
+  /* responsive */
+  @media (max-width: 600px) {
+    .tap-zone { width:220px; height:220px; }
+    .tapok { width:170px; height:170px; }
+    .tapok::after { font-size:70px; }
+    .stats { gap:10px; padding:10px; }
+    .stat .val { font-size:1.2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>👟 Тапок Кликер</h1>
+    <div class="top-bar">
+      <button class="btn" onclick="openSaveModal()">💾 Сохранить</button>
+      <button class="btn" onclick="openLoadModal()">📂 Загрузить</button>
+      <button class="btn" onclick="toggleTheme()">🎨 Тема</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="event-banner" id="eventBanner"></div>
+
+    <div class="stats">
+      <div class="stat"><div class="val" id="scoreDisplay">0</div><div class="lbl">Тапков</div></div>
+      <div class="stat"><div class="val" id="perClickDisplay">1</div><div class="lbl">За тап</div></div>
+      <div class="stat"><div class="val" id="perSecDisplay">0</div><div class="lbl">В секунду</div></div>
+      <div class="stat"><div class="val" id="totalClicksDisplay">0</div><div class="lbl">Всего тапов</div></div>
+      <div class="stat"><div class="val" id="prestigeDisplay">0</div><div class="lbl">Престиж</div></div>
+    </div>
+
+    <div class="tap-zone" id="tapZone">
+      <div class="combo-display" id="comboDisplay">Комбо x1</div>
+      <div class="tapok" id="tapok" onclick="doTap(event)"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('upgrades')">⚡ Улучшения</button>
+      <button class="tab-btn" onclick="switchTab('quests')">📜 Квесты</button>
+      <button class="tab-btn" onclick="switchTab('skins')">🎨 Скины</button>
+      <button class="tab-btn" onclick="switchTab('achievements')">🏆 Достижения</button>
+      <button class="tab-btn" onclick="switchTab('prestige')">✨ Престиж</button>
+      <button class="tab-btn" onclick="switchTab('minigames')">🎮 Мини-игры</button>
+      <button class="tab-btn" onclick="switchTab('story')">📖 Сюжет</button>
+      <button class="tab-btn" onclick="switchTab('rules')">📋 Правила</button>
+      <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки</button>
+    </div>
+
+    <!-- UPGRADES -->
+    <div class="panel active" id="panel-upgrades">
+      <h2 style="margin-bottom:12px; color:var(--accent);">Улучшения</h2>
+      <div class="upgrade-list" id="upgradeList"></div>
+    </div>
+
+    <!-- QUESTS -->
+    <div class="panel" id="panel-quests">
+      <h2 style="margin-bottom:12px; color:var(--accent);">Квесты</h2>
+      <div class="quest-list" id="questList"></div>
+    </div>
+
+    <!-- SKINS -->
+    <div class="panel" id="panel-skins">
+      <h2 style="margin-bottom:12px; color:var(--accent);">Скины тапка</h2>
+      <div class="skin-grid" id="skinGrid"></div>
+    </div>
+
+    <!-- ACHIEVEMENTS -->
+    <div class="panel" id="panel-achievements">
+      <h2 style="margin-bottom:12px; color:var(--accent);">Достижения</h2>
+      <div class="ach-list" id="achList"></div>
+    </div>
+
+    <!-- PRESTIGE -->
+    <div class="panel" id="panel-prestige">
+      <div class="prestige-box">
+        <h2>Сбросить прогресс ради бонуса?</h2>
+        <p style="margin:10px 0; color:#ccc;">При престиже вы теряете все тапки и улучшения, но получаете <b>бонус к множителю</b> навсегда.</p>
+        <p>Текущий множитель: <b id="prestigeMult">1.0x</b></p>
+        <p>Тапков для следующего престижа: <b id="prestigeNeed">1,000,000</b></p>
+        <br>
+        <button class="btn" onclick="doPrestige()" id="prestigeBtn" style="font-size:1.1rem; padding:12px 30px;">✨ Сделать Престиж</button>
+      </div>
+    </div>
+
+    <!-- MINIGAMES -->
+    <div class="panel" id="panel-minigames">
+      <h2 style="margin-bottom:12px; color:var(--accent);">Мини-игры</h2>
+      <div style="text-align:center; padding:20px;">
+        <p style="margin-bottom:16px; color:#ccc;">Зарабатывайте бонусные тапки в мини-играх!</p>
+        <button class="mini-btn" onclick="playLuckyTap()">🍀 Удачный Тап (стоимость: 100 тапков)</button>
+        <button class="mini-btn" onclick="playSpeedTap()">⚡ Скоростной Тап (стоимость: 500 тапков)</button>
+        <button class="mini-btn" onclick="playMemoryTap()">🧠 Память Тапка (стоимость: 1000 тапков)</button>
+        <div id="minigameArea" style="margin-top:20px;"></div>
+      </div>
+    </div>
+
+    <!-- STORY -->
+    <div class="panel" id="panel-story">
+      <div class="text-block">
+        <h3>Глава 1: Пробуждение Тапка</h3>
+        <p>В далёком подвале старого дома лежал обычный тапок. Но однажды молния ударила в крышу, и тапок ожил. Он начал испускать странную энергию — каждый тап по нему порождал магические тапки-валюту.</p>
+        <p>Вы — избранный ТапоМастер. Ваша миссия: тапать, улучшать, раскрывать тайны тапковой вселенной и достичь ТапоБога.</p>
+        <h3>Глава 2: Легион Тапков</h3>
+        <p>Собирая тапки, вы замечаете, что вокруг появляются маленькие тапочки-помощники. Они сами тапают за вас, когда вы спите. Но beware — тёмные силы завидуют вашей мощи...</p>
+        <h3>Глава 3: Бесконечность</h3>
+        <p>Достигнув определённой мощи, вы можете совершить Престиж — переродиться сильнее. С каждым престижем тапок становится могущественнее. Но сколько престижей нужно, чтобы стать абсолютным?</p>
+        <p><i>Продолжение следует... (контент обновляется по мере развития игры)</i></p>
+      </div>
+    </div>
+
+    <!-- RULES -->
+    <div class="panel" id="panel-rules">
+      <div class="text-block">
+        <h3>Как играть</h3>
+        <p>1. <b>Тапайте</b> по тапку в центре экрана, чтобы заработать тапки.</p>
+        <p>2. <b>Покупайте улучшения</b> во вкладке "Улучшения" — они увеличивают тапки за клик и в секунду.</p>
+        <p>3. <b>Выполняйте квесты</b> — за них дают награды.</p>
+        <p>4. <b>Открывайте скины</b> — некоторые дают бонусы.</p>
+        <p>5. <b>Достижения</b> открываются автоматически при выполнении условий.</p>
+        <p>6. <b>Престиж</b> — сброс прогресса за перманентный множитель.</p>
+        <p>7. <b>Мини-игры</b> — шанс выиграть бонусные тапки.</p>
+        <p>8. <b>Сохраняйтесь</b> через кнопку "Сохранить" — код сохранения можно скопировать и загрузить позже.</p>
+        <h3>Советы</h3>
+        <p>• Комбо: чем быстрее тапаете, тем выше множитель (до x10).</p>
+        <p>• Некоторые улучшения работают лучше в комбинации.</p>
+        <p>• Престиж становится доступен при 1,000,000 тапков.</p>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="panel-settings">
+      <h2 style="margin-bottom:12px; color:var(--accent);">Настройки</h2>
+      <div class="setting-row">
+        <span>Чёрно-белая тема</span>
+        <div class="toggle" id="bwToggle" onclick="toggleBW()"></div>
+      </div>
+      <div class="setting-row">
+        <span>Частицы при тапе</span>
+        <div class="toggle on" id="particlesToggle" onclick="toggleParticles()"></div>
+      </div>
+      <div class="setting-row">
+        <span>Звуковые эффекты (визуальные)</span>
+        <div class="toggle on" id="sfxToggle" onclick="toggleSFX()"></div>
+      </div>
+      <div class="setting-row">
+        <span>Автосохранение каждые 60 сек</span>
+        <div class="toggle on" id="autoSaveToggle" onclick="toggleAutoSave()"></div>
+      </div>
+      <div class="setting-row">
+        <span>Сбросить всё прогресс</span>
+        <button class="btn" style="background:#a00;" onclick="hardReset()">⚠️ Сброс</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Тапок Кликер v1.0 — Бесконечное тапание</footer>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h2>Сохранение</h2>
+    <p style="margin-bottom:8px; color:#aaa; font-size:0.85rem;">Скопируйте этот код и сохраните в надёжном месте:</p>
+    <textarea id="saveOutput" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="copySave()">📋 Копировать</button>
+      <button class="btn" onclick="closeModal('saveModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="loadModal">
+  <div class="modal">
+    <h2>Загрузка</h2>
+    <p style="margin-bottom:8px; color:#aaa; font-size:0.85rem;">Вставьте код сохранения:</p>
+    <textarea id="loadInput"></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="loadGame()">📂 Загрузить</button>
+      <button class="btn" onclick="closeModal('loadModal')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======================= GAME STATE ======================= */
+let game = {
+  score: 0,
+  totalClicks: 0,
+  totalEarned: 0,
+  prestige: 0,
+  prestigeMult: 1,
+  combo: 0,
+  comboTimer: null,
+  comboMult: 1,
+  particles: true,
+  sfx: true,
+  autoSave: true,
+  bw: false,
+  skin: 'default',
+  lastSave: Date.now(),
+  eventActive: null,
+  eventTimer: 0,
+  // upgrades
+  upgrades: {
+    finger: { lvl: 0, base: 15, mult: 1.15, type:'click', val:1, name:'Крепкий Палец', desc:'+1 тапок за клик' },
+    glove: { lvl: 0, base: 100, mult: 1.2, type:'click', val:5, name:'Тапочная Перчатка', desc:'+5 тапков за клик' },
+    hammer: { lvl: 0, base: 500, mult: 1.25, type:'click', val:25, name:'Молоток Тапков', desc:'+25 тапков за клик' },
+    robot: { lvl: 0, base: 200, mult: 1.15, type:'sec', val:1, name:'ТапоБот', desc:'+1 тапок/сек' },
+    factory: { lvl: 0, base: 1200, mult: 1.2, type:'sec', val:5, name:'Фабрика Тапков', desc:'+5 тапков/сек' },
+    temple: { lvl: 0, base: 8000, mult: 1.25, type:'sec', val:30, name:'Храм Тапка', desc:'+30 тапков/сек' },
+    clickMult: { lvl: 0, base: 1000, mult: 2.5, type:'mult', val:0.5, name:'Усилитель Клика', desc:'+50% к клику' },
+    secMult: { lvl: 0, base: 2000, mult: 2.5, type:'multSec', val:0.5, name:'Усилитель Времени', desc:'+50% к тапкам/сек' },
+    critChance: { lvl: 0, base: 5000, mult: 3, type:'crit', val:5, name:'Критический Тап', desc:'+5% шанс крита (x10)' },
+    luck: { lvl: 0, base: 10000, mult: 2, type:'luck', val:1, name:'Удача Тапка', desc:'+1 к множителю событий' },
+    infinity: { lvl: 0, base: 100000, mult: 5, type:'global', val:0.1, name:'Бесконечность', desc:'+10% к ВСЕМУ' },
+    quantum: { lvl: 0, base: 1000000, mult: 10, type:'quantum', val:1, name:'Квантовый Тапок', desc:'+1 к базовому множителю' },
+    darkMatter: { lvl: 0, base: 10000000, mult: 15, type:'dark', val:0.5, name:'Тёмная Материя', desc:'+50% к престижу' },
+    singularity: { lvl: 0, base: 100000000, mult: 50, type:'sing', val:2, name:'Сингулярность', desc:'x2 ко всему' },
+    multiverse: { lvl: 0, base: 1000000000, mult: 100, type:'multi', val:5, name:'Мультивселенная', desc:'x5 ко всему' },
+    god: { lvl: 0, base: 10000000000, mult: 500, type:'god', val:10, name:'ТапоБог', desc:'x10 ко всему' },
+  },
+  // quests
+  quests: {
+    q1: { title:'Первые шаги', req:100, cur:0, type:'click', reward:50, done:false, desc:'Тапни 100 раз' },
+    q2: { title:'ТапоНовичок', req:1000, cur:0, type:'click', reward:300, done:false, desc:'Тапни 1000 раз' },
+    q3: { title:'ТапоМастер', req:10000, cur:0, type:'click', reward:2000, done:false, desc:'Тапни 10000 раз' },
+    q4: { title:'Бог Тапания', req:100000, cur:0, type:'click', reward:15000, done:false, desc:'Тапни 100000 раз' },
+    q5: { title:'Первый миллион', req:1000000, cur:0, type:'click', reward:100000, done:false, desc:'Тапни 1,000,000 раз' },
+    q6: { title:'Собиратель', req:5000, cur:0, type:'score', reward:1000, done:false, desc:'Накопи 5000 тапков' },
+    q7: { title:'Богатство', req:100000, cur:0, type:'score', reward:10000, done:false, desc:'Накопи 100000 тапков' },
+    q8: { title:'Миллиардер', req:1000000000, cur:0, type:'score', reward:50000000, done:false, desc:'Накопи 1,000,000,000 тапков' },
+    q9: { title:'Престижный', req:1, cur:0, type:'prestige', reward:50000, done:false, desc:'Сделай 1 престиж' },
+    q10: { title:'Легенда', req:10, cur:0, type:'prestige', reward:5000000, done:false, desc:'Сделай 10 престижей' },
+    q11: { title:'Комбо-мастер', req:50, cur:0, type:'combo', reward:5000, done:false, desc:'Достигни комбо x50' },
+    q12: { title:'Критический удар', req:100, cur:0, type:'crit', reward:10000, done:false, desc:'Сделай 100 критов' },
+  },
+  questCritCount: 0,
+  // skins
+  skins: {
+    default: { name:'Классический', req:0, emoji:'👟', color:'#ff6b6b', color2:'#c0392b', unlocked:true },
+    golden: { name:'Золотой Тапок', req:10000, emoji:'👑', color:'#ffd700', color2:'#b8860b', unlocked:false },
+    diamond: { name:'Алмазный', req:100000, emoji:'💎', color:'#00ffff', color2:'#008b8b', unlocked:false },
+    fire: { name:'Огненный', req:500000, emoji:'🔥', color:'#ff4500', color2:'#8b0000', unlocked:false },
+    ice: { name:'Ледяной', req:2000000, emoji:'❄️', color:'#87ceeb', color2:'#4682b4', unlocked:false },
+    cosmic: { name:'Космический', req:10000000, emoji:'🌌', color:'#9370db', color2:'#4b0082', unlocked:false },
+    rainbow: { name:'Радужный', req:50000000, emoji:'🌈', color:'#ff69b4', color2:'#8a2be2', unlocked:false },
+    void: { name:'Пустотный', req:1000000000, emoji:'🌑', color:'#2c2c2c', color2:'#000000', unlocked:false },
+    godly: { name:'Божественный', req:100000000000, emoji:'⭐', color:'#fffacd', color2:'#ffd700', unlocked:false },
+    hacker: { name:'Хакерский', req:1, emoji:'💻', color:'#00ff00', color2:'#006400', unlocked:false, secret:true },
+  },
+  skinCritCount: 0,
+  // achievements
+  achievements: {
+    a1: { title:'Первый тап', desc:'Сделай 1 тап', check:()=>game.totalClicks>=1 },
+    a2: { title:'Сотня', desc:'Сделай 100 тапов', check:()=>game.totalClicks>=100 },
+    a3: { title:'Тысяча', desc:'Сделай 1000 тапов', check:()=>game.totalClicks>=1000 },
+    a4: { title:'Десяток тысяч', desc:'Сделай 10000 тапов', check:()=>game.totalClicks>=10000 },
+    a5: { title:'Сто тысяч', desc:'Сделай 100000 тапов', check:()=>game.totalClicks>=100000 },
+    a6: { title:'Миллион тапов', desc:'Сделай 1000000 тапов', check:()=>game.totalClicks>=1000000 },
+    a7: { title:'Богатство', desc:'Накопи 100000 тапков', check:()=>game.totalEarned>=100000 },
+    a8: { title:'Миллиардер', desc:'Накопи 1000000000 тапков', check:()=>game.totalEarned>=1000000000 },
+    a9: { title:'Первый престиж', desc:'Сделай 1 престиж', check:()=>game.prestige>=1 },
+    a10: { title:'Мастер престижа', desc:'Сделай 10 престижей', check:()=>game.prestige>=10 },
+    a11: { title:'Критоман', desc:'Сделай 50 критов', check:()=>game.questCritCount>=50 },
+    a12: { title:'Все скины', desc:'Разблокируй все скины', check:()=>Object.values(game.skins).every(s=>s.unlocked) },
+    a13: { title:'Бесконечность', desc:'Достигни 1e20 тапков', check:()=>game.totalEarned>=1e20 },
+    a14: { title:'ТапоБог', desc:'Сделай 100 престижей', check:()=>game.prestige>=100 },
+  },
+  achievementsUnlocked: {},
+};
+
+/* ======================= CORE ======================= */
+function formatNum(n) {
+  if (n < 1000) return Math.floor(n).toString();
+  const suffixes = ['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','UDc','DDc','TDc','QaDc','QiDc','SxDc','SpDc','OcDc','NoDc','Vg'];
+  let tier = Math.log10(n) / 3 | 0;
+  if (tier === 0) return Math.floor(n).toString();
+  if (tier >= suffixes.length) tier = suffixes.length - 1;
+  const suffix = suffixes[tier];
+  const scale = Math.pow(10, tier * 3);
+  const scaled = n / scale;
+  return scaled.toFixed(scaled < 10 ? 2 : (scaled < 100 ? 1 : 0)) + suffix;
+}
+
+function getUpgradeCost(key) {
+  const u = game.upgrades[key];
+  return Math.floor(u.base * Math.pow(u.mult, u.lvl));
+}
+
+function getClickValue() {
+  let base = 1;
+  let clickAdd = 0;
+  let clickMult = 1;
+  let globalMult = 1;
+  let quantum = 0;
+  for (const [k,u] of Object.entries(game.upgrades)) {
+    if (u.type === 'click') clickAdd += u.val * u.lvl;
+    if (u.type === 'mult') clickMult += u.val * u.lvl;
+    if (u.type === 'global') globalMult += u.val * u.lvl;
+    if (u.type === 'quantum') quantum += u.val * u.lvl;
+    if (u.type === 'sing') globalMult *= Math.pow(u.val, u.lvl);
+    if (u.type === 'multi') globalMult *= Math.pow(u.val, u.lvl);
+    if (u.type === 'god') globalMult *= Math.pow(u.val, u.lvl);
+  }
+  let val = (base + clickAdd) * clickMult * game.prestigeMult * globalMult;
+  if (quantum > 0) val *= Math.pow(2, quantum);
+  // skin bonus
+  if (game.skin === 'golden') val *= 1.5;
+  if (game.skin === 'diamond') val *= 2;
+  if (game.skin === 'fire') val *= 3;
+  if (game.skin === 'cosmic') val *= 5;
+  if (game.skin === 'godly') val *= 10;
+  if (game.skin === 'hacker') val *= 100;
+  // event
+  if (game.eventActive === 'doubleClick') val *= 2;
+  if (game.eventActive === 'lucky') val *= 5;
+  return val;
+}
+
+function getSecValue() {
+  let secAdd = 0;
+  let secMult = 1;
+  let globalMult = 1;
+  let quantum = 0;
+  for (const [k,u] of Object.entries(game.upgrades)) {
+    if (u.type === 'sec') secAdd += u.val * u.lvl;
+    if (u.type === 'multSec') secMult += u.val * u.lvl;
+    if (u.type === 'global') globalMult += u.val * u.lvl;
+    if (u.type === 'quantum') quantum += u.val * u.lvl;
+    if (u.type === 'sing') globalMult *= Math.pow(u.val, u.lvl);
+    if (u.type === 'multi') globalMult *= Math.pow(u.val, u.lvl);
+    if (u.type === 'god') globalMult *= Math.pow(u.val, u.lvl);
+  }
+  let val = secAdd * secMult * game.prestigeMult * globalMult;
+  if (quantum > 0) val *= Math.pow(2, quantum);
+  if (game.skin === 'golden') val *= 1.5;
+  if (game.skin === 'diamond') val *= 2;
+  if (game.skin === 'fire') val *= 3;
+  if (game.skin === 'cosmic') val *= 5;
+  if (game.skin === 'godly') val *= 10;
+  if (game.skin === 'hacker') val *= 100;
+  if (game.eventActive === 'doubleSec') val *= 2;
+  if (game.eventActive === 'lucky') val *= 5;
+  return val;
+}
+
+function getCritChance() {
+  let chance = 0;
+  for (const [k,u] of Object.entries(game.upgrades)) {
+    if (u.type === 'crit') chance += u.val * u.lvl;
+  }
+  return Math.min(chance, 100);
+}
+
+function doTap(e) {
+  game.totalClicks++;
+  let val = getClickValue();
+  // crit
+  let isCrit = false;
+  if (Math.random() * 100 < getCritChance()) {
+    val *= 10;
+    isCrit = true;
+    game.questCritCount++;
+    if (game.questCritCount >= 100 && !game.skins.hacker.unlocked) {
+      game.skins.hacker.unlocked = true;
+      showToast('Секретный скин разблокирован: Хакерский!');
+    }
+  }
+  // combo
+  game.combo++;
+  if (game.combo > 1) {
+    game.comboMult = Math.min(1 + game.combo * 0.05, 10);
+    val *= game.comboMult;
+  }
+  clearTimeout(game.comboTimer);
+  game.comboTimer = setTimeout(() => { game.combo = 0; game.comboMult = 1; updateCombo(); }, 2000);
+  updateCombo();
+
+  game.score += val;
+  game.totalEarned += val;
+
+  // visual
+  const tapok = document.getElementById('tapok');
+  tapok.classList.add('shake');
+  setTimeout(()=>tapok.classList.remove('shake'), 300);
+
+  if (game.particles) spawnParticle(e, val, isCrit);
+  if (game.sfx) {
+    // visual feedback
+    tapok.style.boxShadow = isCrit ? '0 0 40px var(--gold)' : '0 0 20px var(--accent)';
+    setTimeout(()=>tapok.style.boxShadow = '', 200);
+  }
+
+  updateUI();
+  checkQuests();
+  checkAchievements();
+  checkSkinUnlocks();
+}
+
+function spawnParticle(e, val, isCrit) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.textContent = (isCrit ? 'КРИТ ' : '+') + formatNum(val);
+  p.style.color = isCrit ? 'var(--gold)' : 'var(--accent)';
+  p.style.left = (e ? e.clientX : window.innerWidth/2) + 'px';
+  p.style.top = (e ? e.clientY : window.innerHeight/2) + 'px';
+  document.body.appendChild(p);
+  setTimeout(()=>p.remove(), 1000);
+}
+
+function updateCombo() {
+  const cd = document.getElementById('comboDisplay');
+  if (game.combo > 1) {
+    cd.textContent = `Комбо x${game.comboMult.toFixed(1)} (${game.combo})`;
+    cd.classList.add('show');
+  } else {
+    cd.classList.remove('show');
+  }
+}
+
+/* ======================= TICK ======================= */
+setInterval(() => {
+  const sec = getSecValue();
+  if (sec > 0) {
+    game.score += sec;
+    game.totalEarned += sec;
+  }
+  // random events
+  if (!game.eventActive && Math.random() < 0.002) {
+    const events = ['doubleClick','doubleSec','lucky'];
+    game.eventActive = events[Math.floor(Math.random()*events.length)];
+    game.eventTimer = 30;
+    const names = {doubleClick:'🔥 Двойной клик!', doubleSec:'⚡ Двойная скорость!', lucky:'🍀 Удачный час!' };
+    const b = document.getElementById('eventBanner');
+    b.textContent = names[game.eventActive] + ' (30 сек)';
+    b.classList.add('show');
+  }
+  if (game.eventActive) {
+    game.eventTimer--;
+    const b = document.getElementById('eventBanner');
+    const names = {doubleClick:'🔥 Двойной клик!', doubleSec:'⚡ Двойная скорость!', lucky:'🍀 Удачный час!' };
+    b.textContent = names[game.eventActive] + ' (' + game.eventTimer + ' сек)';
+    if (game.eventTimer <= 0) {
+      game.eventActive = null;
+      b.classList.remove('show');
+    }
+  }
+  updateUI();
+  checkQuests();
+  checkAchievements();
+  checkSkinUnlocks();
+}, 1000);
+
+/* ======================= UI ======================= */
+function updateUI() {
+  document.getElementById('scoreDisplay').textContent = formatNum(game.score);
+  document.getElementById('perClickDisplay').textContent = formatNum(getClickValue());
+  document.getElementById('perSecDisplay').textContent = formatNum(getSecValue());
+  document.getElementById('totalClicksDisplay').textContent = formatNum(game.totalClicks);
+  document.getElementById('prestigeDisplay').textContent = game.prestige;
+  renderUpgrades();
+  renderQuests();
+  renderSkins();
+  renderAchievements();
+  updatePrestige();
+}
+
+function renderUpgrades() {
+  const list = document.getElementById('upgradeList');
+  let html = '';
+  for (const [key,u] of Object.entries(game.upgrades)) {
+    const cost = getUpgradeCost(key);
+    const canBuy = game.score >= cost;
+    html += `<div class="upgrade">
+      <div class="u-name">${u.name}</div>
+      <div class="u-desc">${u.desc}</div>
+      <div class="u-lvl">Уровень: ${u.lvl}</div>
+      <div class="u-cost">💰 ${formatNum(cost)}</div>
+      <button ${canBuy?'':'disabled'} onclick="buyUpgrade('${key}')">Купить</button>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function buyUpgrade(key) {
+  const cost = getUpgradeCost(key);
+  if (game.score >= cost) {
+    game.score -= cost;
+    game.upgrades[key].lvl++;
+    updateUI();
+  }
+}
+
+function renderQuests() {
+  const list = document.getElementById('questList');
+  let html = '';
+  for (const [key,q] of Object.entries(game.quests)) {
+    let progress = 0;
+    if (q.type === 'click') progress = Math.min(game.totalClicks / q.req, 1);
+    if (q.type === 'score') progress = Math.min(game.totalEarned / q.req, 1);
+    if (q.type === 'prestige') progress = Math.min(game.prestige / q.req, 1);
+    if (q.type === 'combo') progress = Math.min((game.comboMult >= q.req/10 ? 1 : 0), 1); // simplified
+    if (q.type === 'crit') progress = Math.min(game.questCritCount / q.req, 1);
+    const pct = Math.floor(progress * 100);
+    html += `<div class="quest ${q.done?'done':''}">
+      <div>
+        <div class="q-title">${q.title}</div>
+        <div style="font-size:0.75rem;color:#aaa;">${q.desc}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="q-reward">+${formatNum(q.reward)} тапков</div>
+        <div class="q-bar-wrap"><div class="q-bar" style="width:${pct}%"></div></div>
+        <div style="font-size:0.7rem;color:#888;">${pct}%</div>
+      </div>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function checkQuests() {
+  for (const [key,q] of Object.entries(game.quests)) {
+    if (q.done) continue;
+    let completed = false;
+    if (q.type === 'click' && game.totalClicks >= q.req) completed = true;
+    if (q.type === 'score' && game.totalEarned >= q.req) completed = true;
+    if (q.type === 'prestige' && game.prestige >= q.req) completed = true;
+    if (q.type === 'combo' && game.comboMult >= q.req/10) completed = true;
+    if (q.type === 'crit' && game.questCritCount >= q.req) completed = true;
+    if (completed) {
+      q.done = true;
+      game.score += q.reward;
+      showToast('Квест выполнен: ' + q.title + '! +' + formatNum(q.reward));
+    }
+  }
+}
+
+function renderSkins() {
+  const grid = document.getElementById('skinGrid');
+  let html = '';
+  for (const [key,s] of Object.entries(game.skins)) {
+    const active = game.skin === key;
+    html += `<div class="skin-card ${s.unlocked?'':'locked'} ${active?'active':''}" onclick="selectSkin('${key}')">
+      <div class="skin-preview" style="background: radial-gradient(circle at 30% 30%, ${s.color}, ${s.color2});">${s.emoji}</div>
+      <div class="skin-name">${s.name}</div>
+      <div class="skin-req">${s.secret?'Секретный':(s.unlocked?'Разблокирован':'Нужно: '+formatNum(s.req)+' тапков')}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function checkSkinUnlocks() {
+  for (const [key,s] of Object.entries(game.skins)) {
+    if (!s.unlocked && !s.secret && game.totalEarned >= s.req) {
+      s.unlocked = true;
+      showToast('Новый скин разблокирован: ' + s.name + '!');
+    }
+  }
+}
+
+function selectSkin(key) {
+  const s = game.skins[key];
+  if (!s.unlocked) return;
+  game.skin = key;
+  const tapok = document.getElementById('tapok');
+  tapok.style.background = `radial-gradient(circle at 30% 30%, ${s.color}, ${s.color2})`;
+  tapok.querySelector('::after') || (tapok.innerHTML = '');
+  tapok.innerHTML = '';
+  const after = document.createElement('div');
+  after.style.cssText = 'font-size:90px;';
+  after.textContent = s.emoji;
+  tapok.appendChild(after);
+  updateUI();
+}
+
+function renderAchievements() {
+  const list = document.getElementById('achList');
+  let html = '';
+  for (const [key,a] of Object.entries(game.achievements)) {
+    const unlocked = !!game.achievementsUnlocked[key];
+    html += `<div class="ach ${unlocked?'unlocked':''}">
+      <div class="ach-title">${unlocked?'🏆 ':'🔒 '}${a.title}</div>
+      <div class="ach-desc">${a.desc}</div>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function checkAchievements() {
+  for (const [key,a] of Object.entries(game.achievements)) {
+    if (game.achievementsUnlocked[key]) continue;
+    if (a.check()) {
+      game.achievementsUnlocked[key] = true;
+      showToast('Достижение: ' + a.title + '!');
+    }
+  }
+}
+
+function updatePrestige() {
+  const need = Math.floor(1000000 * Math.pow(10, game.prestige));
+  document.getElementById('prestigeNeed').textContent = formatNum(need);
+  document.getElementById('prestigeMult').textContent = game.prestigeMult.toFixed(1) + 'x';
+  const btn = document.getElementById('prestigeBtn');
+  btn.disabled = game.score < need;
+}
+
+function doPrestige() {
+  const need = Math.floor(1000000 * Math.pow(10, game.prestige));
+  if (game.score < need) return;
+  // calc bonus
+  let bonus = 1 + Math.log10(game.score / need + 1);
+  for (const [k,u] of Object.entries(game.upgrades)) {
+    if (u.type === 'dark') bonus += u.val * u.lvl;
+  }
+  game.prestige++;
+  game.prestigeMult = parseFloat((game.prestigeMult + bonus).toFixed(2));
+  // reset
+  game.score = 0;
+  game.totalClicks = 0;
+  game.combo = 0;
+  game.comboMult = 1;
+  for (const k in game.upgrades) game.upgrades[k].lvl = 0;
+  for (const k in game.quests) { game.quests[k].done = false; game.quests[k].cur = 0; }
+  // keep achievements, skins, prestige data
+  showToast('Престиж ' + game.prestige + '! Множитель: ' + game.prestigeMult.toFixed(1) + 'x');
+  updateUI();
+}
+
+/* ======================= MINIGAMES ======================= */
+function playLuckyTap() {
+  if (game.score < 100) { showToast('Недостаточно тапков!'); return; }
+  game.score -= 100;
+  const area = document.getElementById('minigameArea');
+  area.innerHTML = '<p>Тапай по кнопке за 5 секунд! Чем больше тапов, тем больше награда!</p><button class="mini-btn" id="luckyBtn">ТАП!</button><div id="luckyCount">Тапов: 0</div>';
+  let taps = 0;
+  const btn = document.getElementById('luckyBtn');
+  btn.onclick = () => { taps++; document.getElementById('luckyCount').textContent = 'Тапов: ' + taps; };
+  setTimeout(() => {
+    const reward = taps * 10;
+    game.score += reward;
+    area.innerHTML = '<p>🎉 Результат: ' + taps + ' тапов! Награда: +' + formatNum(reward) + ' тапков!</p>';
+    updateUI();
+  }, 5000);
+}
+
+function playSpeedTap() {
+  if (game.score < 500) { showToast('Недостаточно тапков!'); return; }
+  game.score -= 500;
+  const area = document.getElementById('minigameArea');
+  area.innerHTML = '<p>Нажми как можно быстрее, когда появится кнопка!</p><div id="speedTarget" style="width:100px;height:100px;background:var(--accent);border-radius:50%;margin:20px auto;display:none;cursor:pointer;"></div><div id="speedMsg">Жди...</div>';
+  const target = document.getElementById('speedTarget');
+  const msg = document.getElementById('speedMsg');
+  const delay = 2000 + Math.random() * 3000;
+  let startTime = 0;
+  setTimeout(() => {
+    target.style.display = 'block';
+    msg.textContent = 'ЖМИ!';
+    startTime = Date.now();
+    target.onclick = () => {
+      const reaction = Date.now() - startTime;
+      let reward = Math.max(0, Math.floor((500 - reaction) * 10));
+      if (reward < 0) reward = 0;
+      game.score += reward;
+      area.innerHTML = '<p>Реакция: ' + reaction + 'мс! Награда: +' + formatNum(reward) + ' тапков</p>';
+      updateUI();
+    };
+  }, delay);
+}
+
+function playMemoryTap() {
+  if (game.score < 1000) { showToast('Недостаточно тапков!'); return; }
+  game.score -= 1000;
+  const area = document.getElementById('minigameArea');
+  const sequence = [];
+  for (let i=0;i<5;i++) sequence.push(Math.floor(Math.random()*4));
+  const colors = ['#e94560','#0f3460','#00d26a','#ffd700'];
+  let html = '<p>Запомни последовательность цветов!</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:200px;margin:10px auto;">';
+  for (let i=0;i<4;i++) html += `<div id="mem${i}" style="width:80px;height:80px;background:#333;border-radius:10px;"></div>`;
+  html += '</div><div id="memMsg"></div>';
+  area.innerHTML = html;
+  let step = 0;
+  function showSeq(idx) {
+    if (idx >= sequence.length) {
+      document.getElementById('memMsg').textContent = 'Повтори последовательность!';
+      enableInput();
+      return;
+    }
+    const el = document.getElementById('mem'+sequence[idx]);
+    el.style.background = colors[sequence[idx]];
+    setTimeout(() => { el.style.background = '#333'; setTimeout(()=>showSeq(idx+1), 300); }, 600);
+  }
+  function enableInput() {
+    let playerIdx = 0;
+    for (let i=0;i<4;i++) {
+      document.getElementById('mem'+i).onclick = () => {
+        if (playerIdx >= sequence.length) return;
+        if (i === sequence[playerIdx]) {
+          playerIdx++;
+          if (playerIdx >= sequence.length) {
+            const reward = 5000;
+            game.score += reward;
+            area.innerHTML = '<p>🎉 Правильно! Награда: +' + formatNum(reward) + ' тапков!</p>';
+            updateUI();
+          }
+        } else {
+          area.innerHTML = '<p>❌ Ошибка! Попробуй снова.</p>';
+        }
+      };
+    }
+  }
+  setTimeout(()=>showSeq(0), 1000);
+}
+
+/* ======================= TABS ======================= */
+function switchTab(tab) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+/* ======================= SAVE / LOAD ======================= */
+function openSaveModal() {
+  const data = btoa(JSON.stringify(game));
+  document.getElementById('saveOutput').value = data;
+  document.getElementById('saveModal').classList.add('show');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function copySave() {
+  const el = document.getElementById('saveOutput');
+  el.select();
+  document.execCommand('copy');
+  showToast('Код скопирован!');
+}
+function openLoadModal() { document.getElementById('loadModal').classList.add('show'); }
+function loadGame() {
+  try {
+    const data = document.getElementById('loadInput').value.trim();
+    if (!data) return;
+    const parsed = JSON.parse(atob(data));
+    // merge carefully
+    game = parsed;
+    // ensure new fields exist
+    if (!game.questCritCount) game.questCritCount = 0;
+    if (!game.skinCritCount) game.skinCritCount = 0;
+    if (!game.achievementsUnlocked) game.achievementsUnlocked = {};
+    if (!game.skins.hacker) game.skins.hacker = { name:'Хакерский', req:1, emoji:'💻', color:'#00ff00', color2:'#006400', unlocked:false, secret:true };
+    // restore skin visual
+    const s = game.skins[game.skin] || game.skins.default;
+    const tapok = document.getElementById('tapok');
+    tapok.style.background = `radial-gradient(circle at 30% 30%, ${s.color}, ${s.color2})`;
+    tapok.innerHTML = '';
+    const after = document.createElement('div');
+    after.style.cssText = 'font-size:90px;';
+    after.textContent = s.emoji;
+    tapok.appendChild(after);
+    closeModal('loadModal');
+    showToast('Игра загружена!');
+    updateUI();
+  } catch(e) {
+    showToast('Ошибка загрузки!');
+  }
+}
+
+/* ======================= SETTINGS ======================= */
+function toggleBW() {
+  game.bw = !game.bw;
+  document.body.classList.toggle('bw', game.bw);
+  document.getElementById('bwToggle').classList.toggle('on', game.bw);
+}
+function toggleParticles() {
+  game.particles = !game.particles;
+  document.getElementById('particlesToggle').classList.toggle('on', game.particles);
+}
+function toggleSFX() {
+  game.sfx = !game.sfx;
+  document.getElementById('sfxToggle').classList.toggle('on', game.sfx);
+}
+function toggleAutoSave() {
+  game.autoSave = !game.autoSave;
+  document.getElementById('autoSaveToggle').classList.toggle('on', game.autoSave);
+}
+function hardReset() {
+  if (!confirm('Точно сбросить ВЕСЬ прогресс? Это необратимо!')) return;
+  localStorage.removeItem('tapokSave');
+  location.reload();
+}
+
+/* ======================= THEME ======================= */
+function toggleTheme() {
+  toggleBW();
+}
+
+/* ======================= TOAST ======================= */
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:10px 20px;border-radius:10px;z-index:10000;font-weight:bold;animation:floatUp 2s ease-out forwards;';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2000);
+}
+
+/* ======================= LOCAL SAVE ======================= */
+setInterval(() => {
+  if (game.autoSave) {
+    localStorage.setItem('tapokSave', JSON.stringify(game));
+  }
+}, 60000);
+
+function init() {
+  const saved = localStorage.getItem('tapokSave');
+  if (saved) {
+    try {
+      game = JSON.parse(saved);
+      if (!game.questCritCount) game.questCritCount = 0;
+      if (!game.achievementsUnlocked) game.achievementsUnlocked = {};
+      if (!game.skins.hacker) game.skins.hacker = { name:'Хакерский', req:1, emoji:'💻', color:'#00ff00', color2:'#006400', unlocked:false, secret:true };
+    } catch(e){}
+  }
+  // apply skin
+  const s = game.skins[game.skin] || game.skins.default;
+  const tapok = document.getElementById('tapok');
+  tapok.style.background = `radial-gradient(circle at 30% 30%, ${s.color}, ${s.color2})`;
+  tapok.innerHTML = '';
+  const after = document.createElement('div');
+  after.style.cssText = 'font-size:90px;';
+  after.textContent = s.emoji;
+  tapok.appendChild(after);
+  // apply bw
+  if (game.bw) { document.body.classList.add('bw'); document.getElementById('bwToggle').classList.add('on'); }
+  updateUI();
+}
+init();
+</script>
+</body>
+</html>
